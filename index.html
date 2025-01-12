@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gauge Meter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .container{
+            display: flex;
+            flex-direction: column;
+            gap: 4rem;
+        }
+        body {
+            display: grid;
+            place-items: center;
+            width: 100%;
+            height: 100vh;
+            background-color: white;
+        }
+
+        /* Gauge Container */
+        .gauge {
+            --gauge-size: 300px;
+            --gauge-bg-color: white;
+            position: relative;
+            width: var(--gauge-size);
+            height: calc(var(--gauge-size)/2);
+        }
+
+        /* Outer Mask */
+        .gauge__mask {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        /* Background */
+        .gauge__background {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        .gauge__background::before,
+        .gauge__background::after {
+            content: '';
+            border: 1px solid var(--gauge-bg-color);
+            position: absolute;
+            inset: 0;
+            height: var(--gauge-size);
+            border-radius: 50%;
+            clip-path: inset(0 0 50% 0);
+            margin-bottom: calc(-1 * var(--gauge-size) / 4); /* Pull up to align within the container */
+
+            /* Clipping the bottom half */
+        }
+
+        .gauge__background::before {
+            background: conic-gradient(from -90deg,
+                    red 10%,
+                    orange 20%,
+                    yellow 30%,
+                    lime 40%,
+                    green 50%,
+                    transparent 50%);
+        }
+
+        .gauge__background::after {
+            background: repeating-conic-gradient(from 1deg,
+                    transparent,
+                    transparent 1.25deg,
+                    var(--gauge-bg-color) 1.25deg,
+                    var(--gauge-bg-color) 3.5deg);
+        }
+
+        /* Inner Mask */
+        .gauge__inner-mask {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(var(--gauge-size)/2);
+            height: calc(var(--gauge-size)/2);
+            border-radius: 50%;
+            background: var(--gauge-bg-color);
+            clip-path: inset(0 0 49% 0);
+            z-index: 2;
+            /* Clipping the bottom half */
+        }
+
+        /* Percentage Label */
+        .gauge__percentage {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #333;
+            z-index: 4;
+        }
+
+        /* Indicator */
+        .gauge__indicator {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            height: 100%;
+            width: fit-content;
+            transform: translateX(-50%) rotate(var(--rotation, 0deg));
+            transform-origin: 50% 100%;
+            transition: transform 0.2s ease-in-out;
+            z-index: 3;
+        }
+
+        .gauge__indicator-wrapper {
+            --gauge-indicator-size: calc(var(--gauge-size)/40);
+            margin-top: calc(-1 * var(--gauge-indicator-size));
+            width: fit-content;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            height: 60%;
+        }
+
+        .gauge__triangle {
+            width: var(--gauge-indicator-size);
+            height: var(--gauge-indicator-size);
+        }
+
+        .gauge__triangle--down {
+            rotate: 180deg;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100">
+    <div class="flex bg-white flex-col items-center gap-12 p-8 rounded-md shadow">
+        <h1 class="font-bold text-xl w-100">Dynamic Gauge Meter</h1>
+        <div class="gauge">
+            <div class="gauge__mask">
+                <div class="gauge__background"></div>
+                <div class="gauge__inner-mask"></div>
+            </div>
+            <div class="gauge__indicator" id="gaugeIndicator">
+                <div class="gauge__indicator-wrapper">
+                    <svg class="gauge__triangle gauge__triangle--down" xmlns="http://www.w3.org/2000/svg" width="16"
+                        height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd"
+                            d="M7.022 1.566a1.13 1.13 0 0 1 1.96 0l6.857 11.667c.457.778-.092 1.767-.98 1.767H1.144c-.889 0-1.437-.99-.98-1.767z" />
+                    </svg>
+                    <svg class="gauge__triangle" xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                        fill="currentColor" viewBox="0 0 16 16">
+                        <path fill-rule="evenodd"
+                            d="M7.022 1.566a1.13 1.13 0 0 1 1.96 0l6.857 11.667c.457.778-.092 1.767-.98 1.767H1.144c-.889 0-1.437-.99-.98-1.767z" />
+                    </svg>
+                </div>
+            </div>
+            <div class="gauge__percentage" id="gaugePercentage">0%</div>
+        </div>
+    
+        <input class="border-2 pl-2 rounded" type="number" id="gaugeInput" min="0" max="100" value="25" onchange="updateGauge()">
+    </div>
+
+    <script>
+        function updateGauge() {
+            const percentage = document.getElementById('gaugeInput').value;
+            const gaugePercentage = document.getElementById('gaugePercentage');
+            const gaugeIndicator = document.getElementById('gaugeIndicator');
+
+            if (percentage >= 0 && percentage <= 100) {
+                // Update the gauge percentage display
+                gaugePercentage.textContent = percentage + '%';
+
+                // Calculate the rotation based on percentage (mapping 0-100 to -90deg to 90deg)
+                const rotation = (percentage - 50) * 1.8;
+
+                // Set the rotation value as a CSS custom property
+                gaugeIndicator.style.setProperty('--rotation', `${rotation}deg`);
+            }
+        }
+
+        // Initialize with the default value
+        updateGauge();
+    </script>
+</body>
+
+</html>
